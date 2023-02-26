@@ -35,3 +35,7 @@ MobileNet is a family of convolutional neural networks which was proposed by And
 ### DenseNet
 
 DenseNet is a convolutional neural network which was proposed by Gao Huang, Zhuang Liu, Kilian Q. Weinberger, and Laurens van der Maaten in 2016. It introduced the concept of dense connections, which enabled feature reuse and improved parameter efficiency. The paper can be found [here](https://arxiv.org/pdf/1608.06993.pdf).
+
+> Later, this list will be updated with more papers and architectures.
+>
+> For a full list of papers and architectures, check out the notion page [here](https://swamp-water-c4a.notion.site/10a70e2c390f4e119cb709b712d3b168?v=8224d1d9652e48fd83100ab516a228d3).
