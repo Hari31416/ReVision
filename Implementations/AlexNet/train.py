@@ -1,11 +1,5 @@
 import argparse
 import os
-from Implementations.LeNet.model import (
-    built_lenet_og,
-    built_lenet_mo_1,
-    built_lenet_mo_2,
-)
-
 from Implementations.generel.data import DataSet
 from Implementations.generel.utils import (
     return_loss,
@@ -13,28 +7,19 @@ from Implementations.generel.utils import (
     return_metric,
     plot_model,
 )
+from Implementations.AlexNet.model import built_alexnet
 
 MODELS = {
-    "LeNet_OG": built_lenet_og,
-    "LeNet_MO_1": built_lenet_mo_1,
-    "LeNet_MO_2": built_lenet_mo_2,
-}
-
-# This is the output shape of the preprocessing layer
-# Meaning that this will be the input shape of the model
-OUTPUT_SHAPES = {
-    "LeNet_OG": (32, 32, 1),
-    "LeNet_MO_1": (32, 32, 1),
-    "LeNet_MO_2": (28, 28, 1),
+    "AlexNet": built_alexnet,
 }
 
 
-def load_model(args, input_shape, preprocessing):
+def load_model(args, preprocessing):
     if args.model in MODELS:
         model = MODELS[args.model](
             with_preprocessing=preprocessing,
-            input_shape=input_shape,
-            output_shape=OUTPUT_SHAPES[args.model],
+            input_shape=args.input_shape,
+            output_shape=args.output_shape,
         )
     else:
         raise ValueError("Unknown model")
@@ -49,24 +34,24 @@ def summary_only(args):
     if input_shape is None and args.dataset is None:
         raise ValueError("Input shape must be specified. Else specify a dataset")
     if input_shape is not None:
-        LeNet = load_model(args, input_shape, preprocessing)
+        AlexNet = load_model(args, preprocessing)
     elif args.dataset is not None:
         dataset = DataSet(args.dataset)
         data = dataset.load()
-        LeNet = load_model(args, dataset.input_shape, preprocessing)
+        AlexNet = load_model(args, preprocessing)
 
-    LeNet.summary()
+    AlexNet.summary()
     if args.fig_dir is not None:
         img_dir = args.fig_dir
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
         image_file_path = os.path.join(img_dir, args.model + ".png")
-        plot_model(LeNet, image_file_path)
-    return LeNet, data
+        plot_model(AlexNet, image_file_path)
+    return AlexNet, data
 
 
 def main(args):
-    LeNet, dataset = summary_only(args)
+    AlexNet, dataset = summary_only(args)
     if args.summary_only:
         return
     if args.dataset is None:
@@ -80,10 +65,10 @@ def main(args):
     loss = return_loss(args.loss)
     metrics = [return_metric(metric) for metric in args.metrics]
 
-    LeNet.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-    if x_train.shape[-1] > 1:
-        raise ValueError("Only grayscale images are supported")
-    LeNet.fit(
+    AlexNet.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    if x_train.shape[-1] == 1:
+        raise ValueError("Gray scale images are not supported.")
+    AlexNet.fit(
         x_train,
         y_train,
         epochs=args.epochs,
@@ -97,7 +82,7 @@ def arg_parse():
     args.add_argument(
         "--model",
         type=str,
-        default="LeNet_OG",
+        default="AlexNet",
         help="The model to build",
         choices=list(MODELS.keys()),
     )
@@ -106,7 +91,7 @@ def arg_parse():
         type=str,
         default=None,
         help="The dataset to use",
-        choices=["mnist", "cifar10", "fashion_mnist"],
+        choices=["cifar10", "cifar100"],
     )
     args.add_argument(
         "--input_shape",
@@ -114,6 +99,12 @@ def arg_parse():
         nargs="+",
         default=None,
         help="The input shape of the model",
+    )
+    args.add_argument(
+        "--output_shape",
+        type=int,
+        default=1000,
+        help="The output shape of the model",
     )
     args.add_argument(
         "--no_preprocessing",
@@ -137,7 +128,7 @@ def arg_parse():
     args.add_argument(
         "--lr",
         type=float,
-        default=0.01,
+        default=0.001,
         help="The learning rate for the optimizer",
     )
     args.add_argument(

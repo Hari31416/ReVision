@@ -18,7 +18,7 @@ LeNet is a convolutional neural network which was proposed by Yann LeCun in 1998
 AlexNet is a convolutional neural network which was proposed by Alex Krizhevsky, Ilya Sutskever and Geoffrey Hinton in 2012. It was the first convolutional neural network which was used to classify images. The paper can be found [here](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf).
 
 - [ ] Doing
-- [ ] Done
+- [x] Done
 
 ### VGG
 
