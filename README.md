@@ -2,6 +2,8 @@
 
 This is a project where I'm trying to recreate all the ground breaking papers in computor vision using Tensorflow and Pytorch, and hence the name ReVision. The goal is to learn the concepts and the implementation details of the papers, and also to learn how to use Tensorflow and Pytorch. The papers and architectures which I'm planning to implement are listed below.
 
+> Please have a look at the file `How_to_Use.md` for information on how to use this repository.
+
 ## Papers/Architectures
 
 ### LeNet
