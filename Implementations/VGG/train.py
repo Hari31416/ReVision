@@ -7,20 +7,20 @@ from Implementations.generel.utils import (
     return_metric,
     plot_model,
 )
-from Implementations.AlexNet.model import built_alexnet
+from Implementations.VGG.model import VGG
 
-MODELS = {
-    "AlexNet": built_alexnet,
-}
+MODELS = "A B C D E".split(" ")
 
 
 def load_model(args, preprocessing):
     if args.model in MODELS:
-        model = MODELS[args.model](
+        vgg = VGG(
+            args.model,
             with_preprocessing=preprocessing,
             input_shape=args.input_shape,
             output_shape=args.output_shape,
         )
+        model = vgg.build()
     else:
         raise ValueError("Unknown model")
     return model
@@ -36,24 +36,25 @@ def summary_only(args):
     if input_shape is not None:
         if input_shape[-1] == 1:
             raise ValueError("Gray scale images are not supported.")
-        AlexNet = load_model(args, preprocessing)
+        VGG = load_model(args, preprocessing)
     elif args.dataset is not None:
         dataset = DataSet(args.dataset)
         data = dataset.load()
-        AlexNet = load_model(args, preprocessing)
+        VGG = load_model(args, preprocessing)
 
-    AlexNet.summary()
+    VGG.summary(expand_nested=True)
     if args.fig_dir is not None:
         img_dir = args.fig_dir
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
-        image_file_path = os.path.join(img_dir, args.model + ".png")
-        plot_model(AlexNet, image_file_path)
-    return AlexNet, data
+        model_name = f"VGG_{args.model}"
+        image_file_path = os.path.join(img_dir, model_name + ".png")
+        plot_model(VGG, image_file_path)
+    return VGG, data
 
 
 def main(args):
-    AlexNet, dataset = summary_only(args)
+    VGG, dataset = summary_only(args)
     if args.summary_only:
         return
     if args.dataset is None:
@@ -67,10 +68,10 @@ def main(args):
     loss = return_loss(args.loss)
     metrics = [return_metric(metric) for metric in args.metrics]
 
-    AlexNet.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    VGG.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     if x_train.shape[-1] == 1:
         raise ValueError("Gray scale images are not supported.")
-    AlexNet.fit(
+    VGG.fit(
         x_train,
         y_train,
         epochs=args.epochs,
@@ -84,9 +85,9 @@ def arg_parse():
     args.add_argument(
         "--model",
         type=str,
-        default="AlexNet",
+        default="A",
         help="The model to build",
-        choices=list(MODELS.keys()),
+        choices=MODELS,
     )
     args.add_argument(
         "--dataset",
@@ -99,7 +100,7 @@ def arg_parse():
         "--input_shape",
         type=int,
         nargs="+",
-        default=None,
+        default=(224, 224, 3),
         help="The input shape of the model",
     )
     args.add_argument(
@@ -119,7 +120,7 @@ def arg_parse():
     args.add_argument(
         "--summary_only",
         action=argparse.BooleanOptionalAction,
-        default=False,
+        default=True,
     )
     args.add_argument(
         "--batch_size", type=int, default=64, help="The batch size for training"
