@@ -89,8 +89,10 @@ def built_alexnet(
     model.add(layers.MaxPooling2D((3, 3), strides=(2, 2), name="MaxPool3"))
     model.add(layers.Flatten(name="Flatten"))
     model.add(layers.Dense(4096, activation="relu", name="FC1"))
-    model.add(layers.Dropout(0.5))
+    model.add(layers.BatchNormalization(name="BatchNorm1"))
+    model.add(layers.Dropout(0.5, name="Dropout1"))
     model.add(layers.Dense(4096, activation="relu", name="FC2"))
-    model.add(layers.Dropout(0.5))
+    model.add(layers.BatchNormalization(name="BatchNorm2"))
+    model.add(layers.Dropout(0.5, name="Dropout2"))
     model.add(layers.Dense(output_shape, activation="softmax", name="FC3"))
     return model

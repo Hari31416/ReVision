@@ -60,7 +60,9 @@ class VGG:
         fc_layer = Sequential(name="FC")
         fc_layer.add(layers.Flatten(name="Flatten"))
         fc_layer.add(layers.Dense(4096, activation="relu", name="FC_1"))
+        fc_layer.add(layers.BatchNormalization(name="BatchNorm_1"))
         fc_layer.add(layers.Dense(4096, activation="relu", name="FC_2"))
+        fc_layer.add(layers.BatchNormalization(name="BatchNorm_2"))
         fc_layer.add(layers.Dense(self.output_shape, activation="relu", name="FC_3"))
         return fc_layer
 

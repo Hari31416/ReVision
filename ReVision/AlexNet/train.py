@@ -1,13 +1,13 @@
 import argparse
 import os
-from Implementations.generel.data import DataSet
-from Implementations.generel.utils import (
+from ReVision.generel.data import DataSet
+from ReVision.generel.utils import (
     return_loss,
     return_optimizer,
     return_metric,
     plot_model,
 )
-from Implementations.AlexNet.model import built_alexnet
+from ReVision.AlexNet.model import built_alexnet
 
 MODELS = {
     "AlexNet": built_alexnet,

@@ -31,8 +31,8 @@ VGG is a convolutional neural network which was proposed by Karen Simonyan and A
 
 ResNet is a convolutional neural network which was proposed by Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun in 2015. It introduced the concept of residual connections, which enabled the training of very deep neural networks. The paper can be found [here](https://arxiv.org/pdf/1512.03385.pdf).
 
-- [x] Doing
-- [ ] Done
+- [ ] Doing
+- [x] Done
 
 ### Inception
 
