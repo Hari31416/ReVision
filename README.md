@@ -38,8 +38,8 @@ ResNet is a convolutional neural network which was proposed by Kaiming He, Xiang
 
 Inception (also known as GoogleNet) is a convolutional neural network which was proposed by Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, and Andrew Rabinovich in 2014. It introduced the concept of inception modules, which allowed for more efficient and accurate feature extraction. The paper can be found [here](https://arxiv.org/pdf/1409.4842.pdf).
 
-- [x] Doing
-- [ ] Done
+- [ ] Doing
+- [x] Done
 
 ### EfficientNet
 

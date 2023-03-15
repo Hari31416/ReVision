@@ -63,12 +63,12 @@ def return_metric(metric):
     return metric
 
 
-def plot_model(model, fig_dir, **kwargs):
+def plot_model(model, fig_dir, expand_nested=True, **kwargs):
     tf.keras.utils.plot_model(
         model,
         to_file=fig_dir,
         show_shapes=True,
         show_layer_names=True,
-        expand_nested=True,
+        expand_nested=expand_nested,
         **kwargs,
     )
