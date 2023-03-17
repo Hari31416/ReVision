@@ -60,8 +60,10 @@ def summary_only(args):
         dataset = DataSet(args.dataset)
         data = dataset.load()
         model = load_model(args, preprocessing)
-
-    model.summary()
+    if args.expand_summary:
+        model.summary(expand_nested=True)
+    else:
+        model.summary()
     if args.fig_dir is not None:
         img_dir = args.fig_dir
         if not os.path.exists(img_dir):
@@ -173,6 +175,12 @@ def arg_parse():
         type=str,
         default="categorical_crossentropy",
         help="The loss function to use",
+    )
+    args.add_argument(
+        "--expand_summary",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Whether to expand the summary",
     )
     args = args.parse_args()
     return args

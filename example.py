@@ -1,6 +1,6 @@
-# Description: Example of how to use a n implementation of a model
+# Description: Example of how to use an implementation of a model
 
-# FIrst, import the train.py module for that model. In this case, we are using LeNet
+# First, import the train.py module for that model. In this case, we are using LeNet
 from ReVision.LeNet import train
 
 if __name__ == "__main__":
@@ -8,4 +8,3 @@ if __name__ == "__main__":
     args = train.arg_parse()
     # Finally, we can call the main function to train the model
     train.main(args)
-    # Great! Train the model.

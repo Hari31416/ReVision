@@ -1,10 +1,93 @@
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from tensorflow.keras.models import Model, Sequential
+from ReVision.blocks import Block, ResidualBottleneck, Residual
 
 
-# TODO Make it in a better way
-alphabates = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+# Only the plain block is implemented here. For the other blocks, see the `ReVision.blocks` module
+class ResNetPlain(Block):
+    """The plain block in ResNet"""
+
+    def __init__(self, name, filters, strides=1, activation="relu"):
+        """The simple cnn block in ResNet without any residual connections.
+
+        The block was used to create the baseline model in the paper. Padding is set to be "same".
+
+        For others blocks related to the paper, the `Residual` and `ResidualBottleneck` blocks, see the `ReVision.blocks` module.
+
+        Parameters
+        ----------
+        name : str
+            Name of the block
+        filters : int
+            Number of filters in the block
+        strides : int, optional
+            Strides of the block, by default 1
+        activation : str, optional
+            Activation function, by default "relu"
+
+        Returns
+        -------
+        None
+        """
+        super().__init__(name)
+        self.filters = filters
+        self.strides = strides
+        self.activation = activation
+
+    def __str__(self) -> str:
+        return "Plain Block"
+
+    def __repr__(self) -> str:
+        return (
+            super().__repr__()[:-1]
+            + f", filters={self.filters}, strides={self.strides}, activation={self.activation})"
+        )
+
+    def __call__(self, inputs):
+        return self.call(inputs)
+
+    def call(self, inputs):
+
+        x = layers.Conv2D(
+            self.filters, 3, strides=1, padding="same", name=f"{self.name}_conv1"
+        )(inputs)
+        x = layers.BatchNormalization(name=f"{self.name}_bn1")(x)
+        x = layers.Activation("relu", name=f"{self.name}_relu1")(x)
+        x = layers.Conv2D(
+            self.filters,
+            3,
+            strides=2,
+            padding="same",
+            name=f"{self.name}_conv2",
+        )(x)
+        x = layers.BatchNormalization(name=f"{self.name}_bn2")(x)
+        x = layers.Activation("relu", name=f"{self.name}_relu2")(x)
+        model = Model(inputs, x, name=self.name)
+        return model, x
+
+
+def num_to_alphabate(num):
+    """Converts a number to alphabates
+
+    Parameters
+    ----------
+    num : int
+        Number to be converted
+
+    Returns
+    -------
+    str
+        Alphabate
+    """
+    alphabates = "abcdefghijklmnopqrstuvwxyz"
+    res = ""
+    while num > 0:
+        res += alphabates[num % 26]
+        num //= 26
+    return res[::-1]
+
+
 ALL_MODELS = [
     "plain",
     "resneta18",
@@ -16,10 +99,10 @@ ALL_MODELS = [
     "resnetb152",
 ]
 
-# TODO Change the models such that the summary is made up of smaller models
+
 class ResNet:
     """A class to create a ResNet model
-    The class implements a number of ResNet models with different options for expansion
+    The class implements a number of ResNet models with different options for expansion.
     """
 
     def __init__(
@@ -46,11 +129,13 @@ class ResNet:
         self.with_preprocessing = with_preprocessing
         self.input_shape = input_shape
         self.num_classes = output_shape
+        self.input_layer = layers.Input(shape=input_shape, name="input_layer")
 
     def __preprocess(self):
         """Creates the preprocessing layers for the model"""
 
-        input_layer = layers.Input(shape=self.input_shape, name="Preprocessing_Input")
+        # TODO: Add more preprocessing layers
+        input_layer = self.input_layer
         x = layers.experimental.preprocessing.Resizing(
             224, 224, name="resize", input_shape=self.input_shape
         )(input_layer)
@@ -58,154 +143,18 @@ class ResNet:
             lambda x: x / 255.0 - 0.5,
             name="normalization",
         )(x)
-        return input_layer, x
-
-    def plain_block(self, input, kernels, strides, name):
-        """Creates a simple block for resnet"""
-        x = layers.Conv2D(
-            kernels, 3, strides=strides, padding="same", name=f"{name}_conv1"
-        )(input)
-        x = layers.BatchNormalization(name=f"{name}_bn1")(x)
-        x = layers.Activation("relu", name=f"{name}_relu1")(x)
-        x = layers.Conv2D(
-            kernels,
-            3,
-            strides=1,
-            padding="same",
-            name=f"{name}_conv2",
-        )(x)
-        x = layers.BatchNormalization(name=f"{name}_bn2")(x)
-        x = layers.Activation("relu", name=f"{name}_relu2")(x)
-        return x
-
-    def res_block(self, input, kernels, strides, name, expand=None):
-        """Creates a residual block with give options for expansion
-
-        Parameters
-        ----------
-        input : tf.keras.layers.Input
-            Input to the residual block
-        kernels : int
-            Number of kernels in the residual block
-        strides : int
-            Stride of the residual block
-        name : str
-            Name of the residual block
-        expand : str, optional
-            Type of expansion, by default "projection". There are two types of expansion
-            - projection or B: Projection expansion
-            - zero or A: Zero padding expansion
-
-        Returns
-        -------
-        tf.keras.layers
-            Output of the residual block
-
-        """
-        # print(f"Residual block {name} with {kernels} kernels and stride {strides}")
-        # The first convolutional layers are followed by batch normalization and ReLU activation
-        x = layers.Conv2D(
-            kernels, 3, strides=strides, padding="same", name=f"{name}_conv1"
-        )(input)
-        x = layers.BatchNormalization(name=f"{name}_bn1")(x)
-        x = layers.Activation("relu", name=f"{name}_relu1")(x)
-
-        # The second convolutional layers are followed by batch normalization
-        x = layers.Conv2D(kernels, 3, strides=1, padding="same", name=f"{name}_conv2")(
-            x
-        )
-        x = layers.BatchNormalization(name=f"{name}_bn2")(x)
-
-        if strides != 1:
-            # If the stride is not 1, expand the input to match the output shape
-            if expand == "projection" or expand == "B":
-                # Projection expansion
-                input = layers.Conv2D(
-                    kernels,
-                    1,
-                    strides=strides,
-                    padding="same",
-                    name=f"{name}_projection",
-                )(input)
-                input = layers.BatchNormalization(name=f"{name}_bn3")(input)
-
-            elif expand == "zero" or expand == "A":
-                # Zero padding expansion
-                def pad_depth(x, desired_channels):
-                    """Pads the depth of the input tensor to match the desired channels"""
-                    y = tf.zeros_like(x, name=f"{name}_pad_depth1")
-                    new_channels = desired_channels - x.shape.as_list()[-1]
-                    y = y[..., :new_channels]
-                    return layers.concatenate([x, y], name=f"{name}_pad_depth2")
-
-                desired_channels = x.shape.as_list()[-1]
-                input = layers.MaxPool2D(
-                    pool_size=(1, 1),
-                    strides=(2, 2),
-                    padding="same",
-                    name=f"{name}_zero_upscale_pool",
-                )(input)
-                input = layers.Lambda(
-                    pad_depth,
-                    arguments={"desired_channels": desired_channels},
-                    name=f"{name}_zero_upscale_lambda",
-                )(input)
-                input = layers.BatchNormalization(name=f"{name}_bn3")(input)
-
-        # Add the input to the output
-        x = layers.Add(name=f"{name}_add")([x, input])
-        x = layers.Activation("relu", name=f"{name}_relu2")(x)
-        return x
-
-    def bottleneck_res_block(self, input, kernels, strides, name):
-        """Creates a bottleneck residual block
-
-        Parameters
-        ----------
-        input : tf.keras.layers.Input
-            Input to the residual block
-        kernels : int
-            Number of kernels in the residual block
-        strides : int
-            Stride of the residual block
-        name : str
-            Name of the residual block
-
-        Returns
-        -------
-        tf.keras.layers
-            Output of the residual block
-        """
-        x = layers.Conv2D(kernels, 1, strides=1, padding="same", name=f"{name}_conv1")(
-            input
-        )
-        x = layers.BatchNormalization(name=f"{name}_bn1")(x)
-        x = layers.Activation("relu", name=f"{name}_relu1")(x)
-        x = layers.Conv2D(
-            kernels, 3, strides=strides, padding="same", name=f"{name}_conv2"
-        )(x)
-        x = layers.BatchNormalization(name=f"{name}_bn2")(x)
-        x = layers.Activation("relu", name=f"{name}_relu2")(x)
-        x = layers.Conv2D(
-            kernels * 4, 1, strides=1, padding="same", name=f"{name}_conv3"
-        )(x)
-        x = layers.BatchNormalization(name=f"{name}_bn3")(x)
-        if input.shape[-1] - kernels * 4 != 0:
-            input = layers.Conv2D(
-                kernels * 4, 1, strides=strides, padding="same", name=f"{name}_conv4"
-            )(input)
-            input = layers.BatchNormalization(name=f"{name}_bn4")(input)
-        x = layers.Add(name=f"{name}_add")([x, input])
-        x = layers.Activation("relu", name=f"{name}_relu3")(x)
-        return x
+        preprocess = Model(input_layer, x, name="Preprocessing")
+        return preprocess, x
 
     def __repeat_block(
         self,
         block,
         name,
         num_blocks,
+        inputs,
         downsample_first=True,
-        **kwargs,
+        expand=None,
+        filters=None,
     ):
         """Repeats a block of layers for a given number of times
 
@@ -217,33 +166,97 @@ class ResNet:
             Name of the residual block
         num_blocks : int
             Number of times to repeat the block
+        inputs : tf.keras.layers
+            Input to the block
         downsample_first : bool
             Whether to downsample the first block
-        **kwargs: dict
-            Arguments to pass to the block
+        expand : str
+            The expansion type for the block
+            - None: No expansion
+            - A or zero: Use zero padding
+            - B or projection: Use 1x1 convolution
         Returns
         -------
-        tf.keras.layers
-            Output of the residual block
+        (tf.keras.Model, tf.keras.layers)
+            The model and the output of the last layer
         """
-        if downsample_first:
-            kwargs["strides"] = 2
-            name_1 = f"{name}a"
-            x = block(name=name_1, **kwargs)
-        else:
-            kwargs["strides"] = 1
-            name_1 = f"{name}a"
-            x = block(name=name_1, **kwargs)
-        kwargs["input"] = x
-        for i in range(2, num_blocks + 1):
-            kwargs["strides"] = 1
-            x = block(name=f"{name}{alphabates[i]}", **kwargs)
-            kwargs["input"] = x
-        return x
+        block_model = Sequential(name=name)
+        arguments = {}
+        arguments["filters"] = filters
+        if block is Residual:
+            arguments["expand"] = expand
 
-    def _build_resnetAB_simple(
+        if downsample_first:
+            arguments["strides"] = 2
+            name_1 = f"{name}a"
+            b, x = block(name=name_1, **arguments)(inputs)
+        else:
+            arguments["strides"] = 1
+            name_1 = f"{name}a"
+            b, x = block(name=name_1, **arguments)(inputs)
+        block_model.add(b)
+
+        for i in range(2, num_blocks + 1):
+            arguments["strides"] = 1
+            b, x = block(name=f"{name}{num_to_alphabate(i)}", **arguments)(x)
+            block_model.add(b)
+        return block_model, x
+
+    def __build_top(self, inputs):
+        """Builds the top layers of the model
+
+        Parameters
+        ----------
+        inputs : tf.keras.layers
+            Input to the top layers
+
+        Returns
+        -------
+        (tf.keras.Model, tf.keras.layers)
+            Top layers of the model and the output of the top layers
+        """
+        x = layers.Conv2D(64, 7, strides=2, padding="same", name="conv1")(inputs)
+        x = layers.BatchNormalization(name="bn1")(x)
+        x = layers.Activation("relu", name="relu1")(x)
+        x = layers.MaxPool2D(3, strides=2, padding="same", name="pool1")(x)
+
+        top = Model(inputs, x, name="top")
+        return top, x
+
+    def __build_classifier(self, inputs):
+        """Builds the classifier layers of the model
+
+        Parameters
+        ----------
+        inputs : tf.keras.layers
+            Input to the classifier layers
+
+        Returns
+        -------
+        (tf.keras.Model, tf.keras.layers)
+            Classifier layers of the model and the output of the classifier layers
+        """
+        x = layers.GlobalAveragePooling2D()(inputs)
+        x = layers.Dense(self.num_classes, name="Output", activation="softmax")(x)
+        classifier = Model(inputs, x, name="classifier")
+        return classifier, x
+
+    def __block_to_use(self, type):
+        if type is None:
+            return ResidualBottleneck
+        type = type.lower()
+        if type == "plain":
+            return ResNetPlain
+        elif type == "a" or type == "zero":
+            return Residual
+        elif type == "b" or type == "projection":
+            return ResidualBottleneck
+        else:
+            raise ValueError(f"Invalid block type {type}")
+
+    def _build_resnet(
         self,
-        expand="A",
+        expand=None,
         blocks=[2, 2, 2, 2],
         name=None,
     ):
@@ -263,129 +276,64 @@ class ResNet:
         tf.keras.Model
             The ResNet model
         """
+        model = Sequential(name=name)
+        block = self.__block_to_use(expand)
+
         if self.with_preprocessing:
-            input_, x = self.__preprocess()
+            preprocess, x = self.__preprocess()
+            model.add(preprocess)
         else:
-            input_ = layers.Input(shape=(224, 224, 3), name="Input")
-            x = input_
-        x = layers.Conv2D(64, 7, strides=2, padding="same", name="conv1")(x)
-        x = layers.BatchNormalization(name="bn1")(x)
-        x = layers.Activation("relu", name="relu1")(x)
-        x = layers.MaxPool2D(3, strides=2, padding="same", name="pool1")(x)
-        x = self.__repeat_block(
-            block=self.res_block,
+            x = self.input_layer
+        top, x = self.__build_top(x)
+        model.add(top)
+
+        b1, x = self.__repeat_block(
+            block=block,
             name="res1",
             num_blocks=blocks[0],
             downsample_first=False,
-            input=x,
-            kernels=64,
+            inputs=x,
+            filters=64,
             expand=expand,
         )
-        x = self.__repeat_block(
-            block=self.res_block,
+        model.add(b1)
+
+        b2, x = self.__repeat_block(
+            block=block,
             name="res2",
             num_blocks=blocks[1],
             downsample_first=True,
             expand=expand,
-            input=x,
-            kernels=128,
+            inputs=x,
+            filters=128,
         )
-        x = self.__repeat_block(
-            block=self.res_block,
+        model.add(b2)
+
+        b3, x = self.__repeat_block(
+            block=block,
             name="res3",
-            num_blocks=blocks[1],
+            num_blocks=blocks[2],
             downsample_first=True,
             expand=expand,
-            input=x,
-            kernels=256,
+            inputs=x,
+            filters=256,
         )
-        x = self.__repeat_block(
-            block=self.res_block,
+        model.add(b3)
+
+        b4, x = self.__repeat_block(
+            block=block,
             name="res4",
-            num_blocks=blocks[1],
+            num_blocks=blocks[3],
             downsample_first=True,
             expand=expand,
-            input=x,
-            kernels=512,
+            inputs=x,
+            filters=512,
         )
+        model.add(b4)
 
-        x = layers.GlobalAveragePooling2D()(x)
-        out = layers.Dense(self.num_classes, name="Output", activation="softmax")(x)
-        model = Model(input_, out, name=name)
-        return model
+        classifier, x = self.__build_classifier(x)
+        model.add(classifier)
 
-    def _build_resnetAB_bottleneck(
-        self,
-        blocks=[3, 4, 6, 3],
-        name=None,
-    ):
-        """Builds a ResNet model with bottleneck residual blocks
-
-        Parameters
-        ----------
-        blocks : list
-            Number of blocks in each stage
-        name : str
-            Name of the model
-
-        Returns
-        -------
-        tf.keras.Model
-            The ResNet model
-        """
-        if self.with_preprocessing:
-            input_, x = self.__preprocess()
-        else:
-            input_ = layers.Input(shape=(224, 224, 3), name="Input")
-            x = input_
-        input_ = layers.Input(shape=(224, 224, 3), name="Input")
-        x = layers.Conv2D(64, 7, strides=2, padding="same", name="conv1")(input_)
-        x = layers.BatchNormalization(name="bn1")(x)
-        x = layers.Activation("relu", name="relu1")(x)
-        x = layers.MaxPool2D(3, strides=2, padding="same", name="pool1")(x)
-        x = self.__repeat_block(
-            block=self.bottleneck_res_block,
-            name="res1",
-            num_blocks=blocks[0],
-            downsample_first=False,
-            input=x,
-            kernels=64,
-            expand="B",
-        )
-
-        x = self.__repeat_block(
-            block=self.bottleneck_res_block,
-            name="res2",
-            num_blocks=blocks[0],
-            downsample_first=False,
-            input=x,
-            kernels=128,
-            expand="B",
-        )
-
-        x = self.__repeat_block(
-            block=self.bottleneck_res_block,
-            name="res3",
-            num_blocks=blocks[0],
-            downsample_first=False,
-            input=x,
-            kernels=256,
-            expand="B",
-        )
-
-        x = self.__repeat_block(
-            block=self.bottleneck_res_block,
-            name="res4",
-            num_blocks=blocks[0],
-            downsample_first=False,
-            input=x,
-            kernels=512,
-            expand="B",
-        )
-
-        x = layers.GlobalAveragePooling2D()(x)
-        out = layers.Dense(self.num_classes, name="Output", activation="softmax")(x)
-        model = Model(input_, out, name=name)
         return model
 
     def build_plain(self):
@@ -396,99 +344,56 @@ class ResNet:
         tf.keras.Model
             The plain model
         """
-        if self.with_preprocessing:
-            input_, x = self.__preprocess()
-        else:
-            input_ = layers.Input(shape=(224, 224, 3), name="Input")
-            x = input_
-        input_ = layers.Input(shape=(224, 224, 3), name="Input")
-        x = layers.Conv2D(64, 7, strides=2, padding="same", name="conv1")(input_)
-        x = layers.BatchNormalization(name="bn1")(x)
-        x = layers.Activation("relu", name="relu1")(x)
-        x = layers.MaxPool2D(3, strides=2, padding="same", name="pool1")(x)
-
-        x = self.__repeat_block(
-            block=self.plain_block,
-            name="res1",
-            num_blocks=2,
-            downsample_first=False,
-            input=x,
-            kernels=64,
-        )
-        x = self.__repeat_block(
-            block=self.plain_block,
-            name="res2",
-            num_blocks=2,
-            downsample_first=True,
-            input=x,
-            kernels=128,
-        )
-        x = self.__repeat_block(
-            block=self.plain_block,
-            name="res3",
-            num_blocks=2,
-            downsample_first=True,
-            input=x,
-            kernels=256,
-        )
-        x = self.__repeat_block(
-            block=self.plain_block,
-            name="res4",
-            num_blocks=2,
-            downsample_first=True,
-            input=x,
-            kernels=512,
-        )
-        x = layers.GlobalAveragePooling2D()(x)
-        out = layers.Dense(self.num_classes, name="Output", activation="softmax")(x)
-        model = Model(input_, out, name="Plain")
-        return model
+        expand = "plain"
+        blocks = [2, 2, 2, 2]
+        name = "ResNetA18"
+        return self._build_resnet(expand, blocks, name)
 
     def build_resneta18(self):
         """Builds a ResNetA18 model"""
         expand = "A"
         blocks = [2, 2, 2, 2]
         name = "ResNetA18"
-        return self._build_resnetAB_simple(expand, blocks, name)
+        return self._build_resnet(expand, blocks, name)
 
     def build_resneta34(self):
         """Builds a ResNetA34 model"""
-        expand = "A"
+        expand = "zero"
         blocks = [3, 4, 6, 3]
         name = "ResNetA34"
-        return self._build_resnetAB_simple(expand, blocks, name)
+        return self._build_resnet(expand, blocks, name)
 
     def build_resnetb18(self):
         """Builds a ResNetB18 model"""
-        expand = "B"
+        expand = "projection"
         blocks = [2, 2, 2, 2]
         name = "ResNetB18"
-        return self._build_resnetAB_simple(expand, blocks, name)
+        return self._build_resnet(expand, blocks, name)
 
     def build_resnetb34(self):
         """Builds a ResNetB34 model"""
         expand = "B"
         blocks = [3, 4, 6, 3]
         name = "ResNetB34"
-        return self._build_resnetAB_simple(expand, blocks, name)
+        return self._build_resnet(expand, blocks, name)
 
     def build_resnetb50(self):
         """Builds a ResNetB50 model"""
         blocks = [3, 4, 6, 3]
         name = "ResNetB50"
-        return self._build_resnetAB_bottleneck(blocks, name)
+        return self._build_resnet(blocks=blocks, name=name)
 
     def build_resnetb101(self):
         """Builds a ResNetB101 model"""
         blocks = [3, 4, 23, 3]
         name = "ResNetB101"
-        return self._build_resnetAB_bottleneck(blocks, name)
+        return self._build_resnet(blocks=blocks, name=name)
 
     def build_resnetb152(self):
         """Builds a ResNetB152 model"""
         blocks = [3, 8, 36, 3]
         name = "ResNetB152"
-        return self._build_resnetAB_bottleneck(blocks, name)
+        return self._build_resnet(blocks=blocks, name=name)
 
     def build(self, name):
         """Builds the model
