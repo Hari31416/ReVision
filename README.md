@@ -45,7 +45,7 @@ Inception (also known as GoogleNet) is a convolutional neural network which was 
 
 EfficientNet is a family of convolutional neural networks which was proposed by Mingxing Tan and Quoc V. Le in 2019. It achieved state-of-the-art results on the ImageNet classification, COCO object detection, and OpenImages image classification benchmarks while being highly parameter-efficient. The paper can be found [here](https://arxiv.org/pdf/1905.11946.pdf).
 
-- [ ] Doing
+- [x] Doing
 - [ ] Done
 
 ### MobileNet
@@ -53,7 +53,7 @@ EfficientNet is a family of convolutional neural networks which was proposed by 
 MobileNet is a family of convolutional neural networks which was proposed by Andrew G. Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang, Tobias Weyand, Marco Andreetto, and Hartwig Adam in 2017. It was designed to be computationally efficient and suitable for mobile and embedded devices. The paper can be found [here](https://arxiv.org/pdf/1704.04861.pdf).
 
 - [ ] Doing
-- [ ] Done
+- [x] Done
 
 ### DenseNet
 

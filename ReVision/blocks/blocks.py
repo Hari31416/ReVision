@@ -8,6 +8,7 @@ class Block:
 
     def __init__(self, name):
         self.name = name
+        self.filters = None
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -20,6 +21,17 @@ class Block:
 
     def call(self, inputs):
         raise NotImplementedError
+
+    def summary(self, input_shape):
+        """Prints a summary of the block"""
+        if input_shape[-1] != self.filters:
+            print(
+                "WARNING: The input shape does not match the number of filters in the block.\nSummary will work but the output shape will be wrong."
+            )
+            input_shape = (input_shape[0], input_shape[1], self.filters)
+        inputs = layers.Input(shape=input_shape, name=self.name + "_input")
+        block, _ = self(inputs)
+        block.summary()
 
 
 class Residual(Block):
@@ -239,3 +251,88 @@ class ResidualBottleneck(Block):
         inputs = layers.Input(shape=input_shape)
         block, _ = self(inputs)
         block.summary()
+
+
+class MobileV1(Block):
+    """The Mobile V1 block.
+
+    This is the block used in the original MobileNet paper.
+    """
+
+    def __init__(
+        self,
+        name,
+        kernel_size,
+        filters,
+        strides,
+        activation="relu",
+    ):
+        """The Mobile V1 block
+
+        Parameters
+        ----------
+        name : str
+            The name of the block
+        kernel_size : int
+            The kernel size of the block
+        filters : int
+            The number of filters in the block
+        strides : int
+            The stride of the block
+        activation : str, optional
+            The activation function of the block, by default "relu"
+
+        """
+        super().__init__(name)
+        self.kernel_size = kernel_size
+        self.filters = filters
+        self.strides = strides
+        self.activation = activation
+
+    def __str__(self) -> str:
+        return "Mobile V1 Block"
+
+    def __repr__(self) -> str:
+        return (
+            super().__repr__()[:-1]
+            + f", filters={self.filters}, kernel_size={self.kernel_size}, strides={self.strides}, activation={self.activation})"
+        )
+
+    def __call__(self, inputs):
+        return self.call(inputs)
+
+    def call(self, inputs):
+        """The call method for the block
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            The input tensor
+
+        Returns
+        -------
+        (tf.keras.Model, tf.Tensor)
+            The block model and the output tensor
+        """
+        inputs_ = inputs
+        x = layers.DepthwiseConv2D(
+            kernel_size=self.kernel_size,
+            strides=self.strides,
+            padding="same",
+            name=f"{self.name}_dw_s{self.strides}",
+        )(inputs)
+        x = layers.BatchNormalization(name=f"{self.name}_dw_bn")(x)
+        x = layers.Activation(
+            self.activation, name=f"{self.name}_dw_{self.activation}"
+        )(x)
+        x = layers.Conv2D(
+            filters=self.filters,
+            kernel_size=1,
+            strides=1,
+            padding="same",
+            name=f"{self.name}_1x1",
+        )(x)
+        x = layers.BatchNormalization(name=f"{self.name}_1x1_bn")(x)
+        x = layers.Activation(self.activation, name=f"{self.name}_{self.activation}")(x)
+        block = Model(inputs=inputs_, outputs=x, name=self.name)
+        return block, x
