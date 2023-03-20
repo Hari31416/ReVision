@@ -7,21 +7,16 @@ from ReVision.generel.utils import (
     return_metric,
     plot_model,
 )
-from ReVision.Inception.model import Inception
-
-MODELS = ["inception"]
+from ReVision.EfficientNet.model import EfficientNet, PHI_TO_RES
 
 
 def load_model(args, preprocessing):
-    if args.model.lower() in MODELS:
-        inception = Inception(
-            with_preprocessing=preprocessing,
-            input_shape=args.input_shape,
-            output_shape=args.output_shape,
-        )
-        model = inception.build()
-    else:
-        raise ValueError("Unknown model")
+    mb = EfficientNet(
+        with_preprocessing=preprocessing,
+        input_shape=args.input_shape,
+        output_shape=args.output_shape,
+    )
+    model = mb.build(name=args.model, phi=args.phi)
     return model
 
 
@@ -48,7 +43,10 @@ def summary_only(args):
         img_dir = args.fig_dir
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
-        model_name = args.model
+        if args.model:
+            model_name = args.model
+        else:
+            model_name = f"EfficientNetB{args.phi}"
         image_file_path = os.path.join(img_dir, model_name + ".png")
         plot_model(
             model,
@@ -90,9 +88,14 @@ def arg_parse():
     args.add_argument(
         "--model",
         type=str,
-        default="inception",
-        help="The model to build",
-        choices=MODELS,
+        help="Model to build. Required if you don't pass `phi`",
+    )
+    args.add_argument(
+        "--phi",
+        type=int,
+        default=0,
+        help="The phi value to choose. Required if `model` not specified",
+        choices=list(PHI_TO_RES.keys()),
     )
     args.add_argument(
         "--dataset",
@@ -106,7 +109,7 @@ def arg_parse():
         type=int,
         nargs="+",
         default=(224, 224, 3),
-        help="The input shape of the model",
+        help="The input shape of the dataset",
     )
     args.add_argument(
         "--output_shape",
@@ -120,7 +123,10 @@ def arg_parse():
         default=False,
     )
     args.add_argument(
-        "--fig_dir", type=str, help="The directory to save the figures", default=None
+        "--fig_dir",
+        type=str,
+        help="The directory to save the figures",
+        default=None,
     )
     args.add_argument(
         "--summary_only",
@@ -128,10 +134,16 @@ def arg_parse():
         default=False,
     )
     args.add_argument(
-        "--batch_size", type=int, default=64, help="The batch size for training"
+        "--batch_size",
+        type=int,
+        default=64,
+        help="The batch size for training",
     )
     args.add_argument(
-        "--epochs", type=int, default=10, help="The number of epochs for training"
+        "--epochs",
+        type=int,
+        default=10,
+        help="The number of epochs for training",
     )
     args.add_argument(
         "--lr",

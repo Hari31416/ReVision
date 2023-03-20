@@ -137,7 +137,7 @@ def arg_parse():
     args.add_argument(
         "--summary_only",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
     )
     args.add_argument(
         "--batch_size",
