@@ -41,16 +41,16 @@ Inception (also known as GoogleNet) is a convolutional neural network which was 
 - [ ] Doing
 - [x] Done
 
-### EfficientNet
-
-EfficientNet is a family of convolutional neural networks which was proposed by Mingxing Tan and Quoc V. Le in 2019. It achieved state-of-the-art results on the ImageNet classification, COCO object detection, and OpenImages image classification benchmarks while being highly parameter-efficient. The paper can be found [here](https://arxiv.org/pdf/1905.11946.pdf).
-
-- [x] Doing
-- [ ] Done
-
 ### MobileNet
 
 MobileNet is a family of convolutional neural networks which was proposed by Andrew G. Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang, Tobias Weyand, Marco Andreetto, and Hartwig Adam in 2017. It was designed to be computationally efficient and suitable for mobile and embedded devices. The paper can be found [here](https://arxiv.org/pdf/1704.04861.pdf).
+
+- [ ] Doing
+- [x] Done
+
+### EfficientNet
+
+EfficientNet is a family of convolutional neural networks which was proposed by Mingxing Tan and Quoc V. Le in 2019. It achieved state-of-the-art results on the ImageNet classification, COCO object detection, and OpenImages image classification benchmarks while being highly parameter-efficient. The paper can be found [here](https://arxiv.org/pdf/1905.11946.pdf).
 
 - [ ] Doing
 - [x] Done
@@ -60,7 +60,7 @@ MobileNet is a family of convolutional neural networks which was proposed by And
 DenseNet is a convolutional neural network which was proposed by Gao Huang, Zhuang Liu, Kilian Q. Weinberger, and Laurens van der Maaten in 2016. It introduced the concept of dense connections, which enabled feature reuse and improved parameter efficiency. The paper can be found [here](https://arxiv.org/pdf/1608.06993.pdf).
 
 - [ ] Doing
-- [ ] Done
+- [x] Done
 
 > Later, this list will be updated with more papers and architectures.
 >

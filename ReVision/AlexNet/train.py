@@ -1,7 +1,7 @@
 import argparse
 import os
-from ReVision.generel.data import DataSet
-from ReVision.generel.utils import (
+from ReVision.utilities.data import DataSet
+from ReVision.utilities.utils import (
     return_loss,
     return_optimizer,
     return_metric,

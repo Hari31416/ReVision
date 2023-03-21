@@ -782,3 +782,104 @@ class MBConv(Block):
             x = layers.Add(name=f"{self.name}_add")([inputs, x])
         block = Model(inputs=inputs_, outputs=x, name=self.name)
         return block, x
+
+
+class DenseBlock(Block):
+    """The dense block used in DenseNet"""
+
+    def __init__(
+        self,
+        name,
+        blocks,
+        k=12,
+        activation="relu",
+    ):
+        """The dense block"""
+        super().__init__(name)
+        self.blocks = blocks
+        self.k = k
+        self.activation = activation
+
+    def __str__(self) -> str:
+        return "Dense Block"
+
+    def __repr__(self) -> str:
+        return (
+            super().__repr__()[:-1]
+            + f", blocks={self.blocks}, k={self.k}, activation={self.activation})"
+        )
+
+    def __call__(self, inputs):
+        return self.call(inputs)
+
+    def __block(self, name, x, inputs_to_concat):
+        """Creates the sub block for the dense block
+
+        Parameters
+        ----------
+        name : str
+            The name of the block
+        x : tf.Tensor
+            The input tensor
+        inputs_to_concat : list
+            The list of tensors to concatenate
+
+        Returns
+        -------
+        (tf.Tensor, list)
+            The output tensor and the list of tensors to concatenate
+        """
+        x = layers.BatchNormalization(name=f"{name}_bn1")(x)
+        x = layers.Activation(self.activation, name=f"{name}_{self.activation}1")(x)
+        x = layers.Conv2D(
+            filters=4 * self.k,
+            kernel_size=1,
+            strides=1,
+            padding="same",
+            name=f"{name}_conv1x1",
+        )(x)
+        x = layers.BatchNormalization(name=f"{name}_bn2")(x)
+        x = layers.Activation(self.activation, name=f"{name}_{self.activation}2")(x)
+        x = layers.Conv2D(
+            filters=self.k,
+            kernel_size=3,
+            strides=1,
+            padding="same",
+            name=f"{name}_conv3x3",
+        )(x)
+        inputs_to_concat.append(x)
+        x = layers.Concatenate(name=f"{name}_concat")(inputs_to_concat)
+        return x, inputs_to_concat
+
+    def call(self, inputs):
+        """The call method for the block
+
+        Parameters
+        ----------
+        inputs : tf.Tensor
+            The input tensor
+
+        Returns
+        -------
+        (tf.keras.Model, tf.Tensor)
+            The block model and the output tensor
+        """
+        inputs_ = inputs
+        x = inputs
+        inputs_to_concat = [x]
+        for i in range(self.blocks):
+            x, inputs_to_concat = self.__block(
+                name=f"{self.name}_{i+1}", x=x, inputs_to_concat=inputs_to_concat
+            )
+
+        x = layers.BatchNormalization(name=f"{self.name}_bn")(x)
+        x = layers.Activation(self.activation, name=f"{self.name}_{self.activation}")(x)
+
+        block = Model(inputs=inputs_, outputs=x, name=self.name)
+        return block, x
+
+    def summary(self, input_shape):
+        """Prints a summary of the block"""
+        inputs = layers.Input(shape=input_shape, name=self.name + "_input")
+        block, _ = self(inputs)
+        block.summary()
