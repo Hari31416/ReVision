@@ -19,7 +19,7 @@ The paper followed by doing some comprarison between the autoencoder and PCA. Th
 
 ## Implementation
 
-This time, we will not create a class of autoencoder. This is done because we can not have a _general_ autoencoder. Instead, we will create some autoencoders by using dense and convolutional layers. The goal will be to make a comparison between the two. We will use MNIST, Fashion MNIST and CIFAR-10 datasets.
+We will create a class which can be used to instantiate autoencoder made up of dense blocks of convolution blocks.The goal will be to make a comparison between the two. We will use MNIST, Fashion MNIST and CIFAR-10 datasets. For starting, a simple comparison of MNIST dataset will be done. Other datasets will be used later.
 
 ### Architecture Details
 
@@ -36,3 +36,17 @@ Here, the architecture is divided into three different networks:
 #### Convolution Autoencoder
 
 Here, the networks are made up of a series of block. Each block has two conv layer for encoder (or conv transpose for decoder) and one pooling layer (or upsampling layer for decoder). The kernel size is 3, stride 1 and padding same for the conv layers. For pooling and upsampling, stride of 2 is used. The number of kernels starts with 32 and doubles after each block.
+
+### Calling the Autoencoder
+
+To create a Dense autoencoder, call the `Autoencoder.build` method with `neurons` and `encoding_shape` parameters. The `neurons` parameter is a list of integers which represents the number of neurons in each layer. The `encoding_shape` parameter is an integer which represents the number of neurons in the bottleneck layer.
+
+For the Convolution autoencode, again, call the `Autoencoder.build` method but with `filters` and `kernels` parameters. The `filters` parameter is a list of integers which represents the number of kernels in each block. The `kernels` parameter is an integer which represents the kernel size of the conv layers.
+
+`activation` parameter, which defaults to `relu`, can be used to change the activation function of the layers in both the autoencoders.
+
+> The class has some helper functions to `compile`, `fit` and `evaluate` the model. These functions are not used in this notebook. Theere are also methods to `encode` and `decode` the data.
+
+Here is an example of the encoding learned by the autoencoder. (I've used convolutional autoencoder with 32 and 64 filters.)
+![Autoencoder](images/1003.png)
+We can see that the autoencoder has learned to encode the data quite well.

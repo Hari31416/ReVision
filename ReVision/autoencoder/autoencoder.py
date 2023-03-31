@@ -8,6 +8,17 @@ class AutoEncoder:
     """AutoEncoder class"""
 
     def __init__(self, input_shape) -> None:
+        """Initialize AutoEncoder class
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input shape of the data
+
+        Returns
+        -------
+        None
+        """
         self.input_shape = input_shape
         self.encoding_shape = None
         self.encoder = None
@@ -15,6 +26,26 @@ class AutoEncoder:
         self.autoencoder = None
         self.compiled = False
         self.fitted = False
+
+    def __str__(self) -> str:
+        """Print the class
+
+        Returns
+        -------
+        str
+            String representation of the class
+        """
+        return f"AutoEncoder(input_shape={self.input_shape})"
+
+    def __repr__(self) -> str:
+        """Print the class
+
+        Returns
+        -------
+        str
+            String representation of the class
+        """
+        return self.__str__()
 
     def encoder_dense(self, inputs, neurons, activation, name="encoder"):
         """Encoder model with dense layers
