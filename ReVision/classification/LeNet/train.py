@@ -1,5 +1,11 @@
 import argparse
 import os
+from ReVision.classification.LeNet.model import (
+    built_lenet_og,
+    built_lenet_mo_1,
+    built_lenet_mo_2,
+)
+
 from ReVision.utilities.data import DataSet
 from ReVision.utilities.utils import (
     return_loss,
@@ -7,16 +13,31 @@ from ReVision.utilities.utils import (
     return_metric,
     plot_model,
 )
-from ReVision.DenseNet.model import DenseNet, SIZE_TO_FINAL_LAYERS
+
+MODELS = {
+    "LeNet_OG": built_lenet_og,
+    "LeNet_MO_1": built_lenet_mo_1,
+    "LeNet_MO_2": built_lenet_mo_2,
+}
+
+# This is the output shape of the preprocessing layer
+# Meaning that this will be the input shape of the model
+OUTPUT_SHAPES = {
+    "LeNet_OG": (32, 32, 1),
+    "LeNet_MO_1": (32, 32, 1),
+    "LeNet_MO_2": (28, 28, 1),
+}
 
 
-def load_model(args, preprocessing):
-    mb = DenseNet(
-        with_preprocessing=preprocessing,
-        input_shape=args.input_shape,
-        output_shape=args.output_shape,
-    )
-    model = mb.build(size=args.size, k=args.k, theta=args.theta)
+def load_model(args, input_shape, preprocessing):
+    if args.model in MODELS:
+        model = MODELS[args.model](
+            with_preprocessing=preprocessing,
+            input_shape=input_shape,
+            output_shape=OUTPUT_SHAPES[args.model],
+        )
+    else:
+        raise ValueError("Unknown model")
     return model
 
 
@@ -27,37 +48,25 @@ def summary_only(args):
     data = None
     if input_shape is None and args.dataset is None:
         raise ValueError("Input shape must be specified. Else specify a dataset")
-
     if input_shape is not None:
-        if input_shape[-1] == 1:
-            raise ValueError("Gray scale images are not supported.")
-        model = load_model(args, preprocessing)
+        LeNet = load_model(args, input_shape, preprocessing)
     elif args.dataset is not None:
         dataset = DataSet(args.dataset)
         data = dataset.load()
-        model = load_model(args, preprocessing)
+        LeNet = load_model(args, dataset.input_shape, preprocessing)
 
-    if args.expand_summary:
-        model.summary(expand_nested=True)
-    else:
-        model.summary()
-
+    LeNet.summary()
     if args.fig_dir is not None:
         img_dir = args.fig_dir
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
-        model_name = model.name
-        image_file_path = os.path.join(img_dir, model_name + ".png")
-        plot_model(
-            model,
-            image_file_path,
-            expand_nested=args.expand_summary,
-        )
-    return model, data
+        image_file_path = os.path.join(img_dir, args.model + ".png")
+        plot_model(LeNet, image_file_path)
+    return LeNet, data
 
 
 def main(args):
-    model, dataset = summary_only(args)
+    LeNet, dataset = summary_only(args)
     if args.summary_only:
         return
     if args.dataset is None:
@@ -71,10 +80,10 @@ def main(args):
     loss = return_loss(args.loss)
     metrics = [return_metric(metric) for metric in args.metrics]
 
-    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-    if x_train.shape[-1] == 1:
-        raise ValueError("Gray scale images are not supported.")
-    model.fit(
+    LeNet.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    if x_train.shape[-1] > 1:
+        raise ValueError("Only grayscale images are supported")
+    LeNet.fit(
         x_train,
         y_train,
         epochs=args.epochs,
@@ -86,43 +95,25 @@ def main(args):
 def arg_parse():
     args = argparse.ArgumentParser(add_help=True)
     args.add_argument(
-        "--size",
-        type=int,
-        default=1,
-        help="The size of the model",
-        choices=list(SIZE_TO_FINAL_LAYERS.keys()),
-    )
-    args.add_argument(
-        "--k",
-        type=int,
-        default=12,
-        help="The growth rate of the model",
-    )
-    args.add_argument(
-        "--theta",
-        type=float,
-        default=1,
-        help="The compression rate of the model",
+        "--model",
+        type=str,
+        default="LeNet_OG",
+        help="The model to build",
+        choices=list(MODELS.keys()),
     )
     args.add_argument(
         "--dataset",
         type=str,
         default=None,
         help="The dataset to use",
-        choices=["cifar10", "cifar100"],
+        choices=["mnist", "cifar10", "fashion_mnist"],
     )
     args.add_argument(
         "--input_shape",
         type=int,
         nargs="+",
-        default=(224, 224, 3),
-        help="The input shape of the dataset",
-    )
-    args.add_argument(
-        "--output_shape",
-        type=int,
-        default=1000,
-        help="The output shape of the model",
+        default=(32, 32, 1),
+        help="The input shape of the model",
     )
     args.add_argument(
         "--no_preprocessing",
@@ -130,10 +121,7 @@ def arg_parse():
         default=False,
     )
     args.add_argument(
-        "--fig_dir",
-        type=str,
-        help="The directory to save the figures",
-        default=None,
+        "--fig_dir", type=str, help="The directory to save the figures", default=None
     )
     args.add_argument(
         "--summary_only",
@@ -141,21 +129,15 @@ def arg_parse():
         default=False,
     )
     args.add_argument(
-        "--batch_size",
-        type=int,
-        default=64,
-        help="The batch size for training",
+        "--batch_size", type=int, default=64, help="The batch size for training"
     )
     args.add_argument(
-        "--epochs",
-        type=int,
-        default=10,
-        help="The number of epochs for training",
+        "--epochs", type=int, default=10, help="The number of epochs for training"
     )
     args.add_argument(
         "--lr",
         type=float,
-        default=0.001,
+        default=0.01,
         help="The learning rate for the optimizer",
     )
     args.add_argument(
@@ -175,12 +157,6 @@ def arg_parse():
         type=str,
         default="categorical_crossentropy",
         help="The loss function to use",
-    )
-    args.add_argument(
-        "--expand_summary",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Whether to expand the summary",
     )
     args = args.parse_args()
     return args

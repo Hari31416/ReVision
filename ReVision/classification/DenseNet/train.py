@@ -7,41 +7,16 @@ from ReVision.utilities.utils import (
     return_metric,
     plot_model,
 )
-from ReVision.ResNet.model import ResNet
-
-MODELS = [
-    "plain",
-    "resneta18",
-    "resneta34",
-    "resnetb18",
-    "resnetb34",
-    "resnetb50",
-    "resnetb101",
-    "resnetb152",
-]
-
-UGLY_TO_PRETTY_NAME = {
-    "plain": "Plain",
-    "resneta18": "ResNetA18",
-    "resneta34": "ResNetA34",
-    "resnetb18": "ResNetB18",
-    "resnetb34": "ResNetB34",
-    "resnetb50": "ResNetB50",
-    "resnetb101": "ResNetB101",
-    "resnetb152": "ResNetB152",
-}
+from ReVision.classification.DenseNet.model import DenseNet, SIZE_TO_FINAL_LAYERS
 
 
 def load_model(args, preprocessing):
-    if args.model.lower() in MODELS:
-        resnet = ResNet(
-            with_preprocessing=preprocessing,
-            input_shape=args.input_shape,
-            output_shape=args.output_shape,
-        )
-        model = resnet.build(args.model)
-    else:
-        raise ValueError("Unknown model")
+    mb = DenseNet(
+        with_preprocessing=preprocessing,
+        input_shape=args.input_shape,
+        output_shape=args.output_shape,
+    )
+    model = mb.build(size=args.size, k=args.k, theta=args.theta)
     return model
 
 
@@ -52,6 +27,7 @@ def summary_only(args):
     data = None
     if input_shape is None and args.dataset is None:
         raise ValueError("Input shape must be specified. Else specify a dataset")
+
     if input_shape is not None:
         if input_shape[-1] == 1:
             raise ValueError("Gray scale images are not supported.")
@@ -60,20 +36,23 @@ def summary_only(args):
         dataset = DataSet(args.dataset)
         data = dataset.load()
         model = load_model(args, preprocessing)
+
     if args.expand_summary:
         model.summary(expand_nested=True)
     else:
         model.summary()
+
     if args.fig_dir is not None:
         img_dir = args.fig_dir
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
-        if args.model.lower() == "plain":
-            model_name = "ResNet_Plain"
-        else:
-            model_name = UGLY_TO_PRETTY_NAME[args.model.lower()]
+        model_name = model.name
         image_file_path = os.path.join(img_dir, model_name + ".png")
-        plot_model(model, image_file_path)
+        plot_model(
+            model,
+            image_file_path,
+            expand_nested=args.expand_summary,
+        )
     return model, data
 
 
@@ -107,11 +86,23 @@ def main(args):
 def arg_parse():
     args = argparse.ArgumentParser(add_help=True)
     args.add_argument(
-        "--model",
-        type=str,
-        default="resneta18",
-        help="The model to build",
-        choices=MODELS,
+        "--size",
+        type=int,
+        default=1,
+        help="The size of the model",
+        choices=list(SIZE_TO_FINAL_LAYERS.keys()),
+    )
+    args.add_argument(
+        "--k",
+        type=int,
+        default=12,
+        help="The growth rate of the model",
+    )
+    args.add_argument(
+        "--theta",
+        type=float,
+        default=1,
+        help="The compression rate of the model",
     )
     args.add_argument(
         "--dataset",
@@ -125,7 +116,7 @@ def arg_parse():
         type=int,
         nargs="+",
         default=(224, 224, 3),
-        help="The input shape of the model",
+        help="The input shape of the dataset",
     )
     args.add_argument(
         "--output_shape",
@@ -139,7 +130,10 @@ def arg_parse():
         default=False,
     )
     args.add_argument(
-        "--fig_dir", type=str, help="The directory to save the figures", default=None
+        "--fig_dir",
+        type=str,
+        help="The directory to save the figures",
+        default=None,
     )
     args.add_argument(
         "--summary_only",
@@ -147,10 +141,16 @@ def arg_parse():
         default=False,
     )
     args.add_argument(
-        "--batch_size", type=int, default=64, help="The batch size for training"
+        "--batch_size",
+        type=int,
+        default=64,
+        help="The batch size for training",
     )
     args.add_argument(
-        "--epochs", type=int, default=10, help="The number of epochs for training"
+        "--epochs",
+        type=int,
+        default=10,
+        help="The number of epochs for training",
     )
     args.add_argument(
         "--lr",

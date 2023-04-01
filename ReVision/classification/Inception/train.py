@@ -4,23 +4,21 @@ from ReVision.utilities.data import DataSet
 from ReVision.utilities.utils import (
     return_loss,
     return_optimizer,
-    return_metric,
     plot_model,
 )
-from ReVision.AlexNet.model import built_alexnet
+from ReVision.classification.Inception.model import Inception
 
-MODELS = {
-    "AlexNet": built_alexnet,
-}
+MODELS = ["inception"]
 
 
 def load_model(args, preprocessing):
-    if args.model in MODELS:
-        model = MODELS[args.model](
+    if args.model.lower() in MODELS:
+        inception = Inception(
             with_preprocessing=preprocessing,
             input_shape=args.input_shape,
             output_shape=args.output_shape,
         )
+        model = inception.build()
     else:
         raise ValueError("Unknown model")
     return model
@@ -36,24 +34,31 @@ def summary_only(args):
     if input_shape is not None:
         if input_shape[-1] == 1:
             raise ValueError("Gray scale images are not supported.")
-        AlexNet = load_model(args, preprocessing)
+        model = load_model(args, preprocessing)
     elif args.dataset is not None:
         dataset = DataSet(args.dataset)
         data = dataset.load()
-        AlexNet = load_model(args, preprocessing)
-
-    AlexNet.summary()
+        model = load_model(args, preprocessing)
+    if args.expand_summary:
+        model.summary(expand_nested=True)
+    else:
+        model.summary()
     if args.fig_dir is not None:
         img_dir = args.fig_dir
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
-        image_file_path = os.path.join(img_dir, args.model + ".png")
-        plot_model(AlexNet, image_file_path)
-    return AlexNet, data
+        model_name = args.model
+        image_file_path = os.path.join(img_dir, model_name + ".png")
+        plot_model(
+            model,
+            image_file_path,
+            expand_nested=args.expand_summary,
+        )
+    return model, data
 
 
 def main(args):
-    AlexNet, dataset = summary_only(args)
+    model, dataset = summary_only(args)
     if args.summary_only:
         return
     if args.dataset is None:
@@ -67,10 +72,10 @@ def main(args):
     loss = return_loss(args.loss)
     metrics = [return_metric(metric) for metric in args.metrics]
 
-    AlexNet.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     if x_train.shape[-1] == 1:
         raise ValueError("Gray scale images are not supported.")
-    AlexNet.fit(
+    model.fit(
         x_train,
         y_train,
         epochs=args.epochs,
@@ -84,9 +89,9 @@ def arg_parse():
     args.add_argument(
         "--model",
         type=str,
-        default="AlexNet",
+        default="inception",
         help="The model to build",
-        choices=list(MODELS.keys()),
+        choices=MODELS,
     )
     args.add_argument(
         "--dataset",
@@ -99,7 +104,7 @@ def arg_parse():
         "--input_shape",
         type=int,
         nargs="+",
-        default=None,
+        default=(224, 224, 3),
         help="The input shape of the model",
     )
     args.add_argument(
@@ -150,6 +155,12 @@ def arg_parse():
         type=str,
         default="categorical_crossentropy",
         help="The loss function to use",
+    )
+    args.add_argument(
+        "--expand_summary",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Whether to expand the summary",
     )
     args = args.parse_args()
     return args

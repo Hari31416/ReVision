@@ -7,7 +7,7 @@ from ReVision.utilities.utils import (
     return_metric,
     plot_model,
 )
-from ReVision.MobileNet.model import MobileNet, RHO_TO_RES
+from ReVision.classification.MobileNet.model import MobileNet, RHO_TO_RES
 
 
 def load_model(args, preprocessing):

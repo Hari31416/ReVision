@@ -7,19 +7,20 @@ from ReVision.utilities.utils import (
     return_metric,
     plot_model,
 )
-from ReVision.Inception.model import Inception
+from ReVision.classification.VGG.model import VGG
 
-MODELS = ["inception"]
+MODELS = "A B C D E".split(" ")
 
 
 def load_model(args, preprocessing):
-    if args.model.lower() in MODELS:
-        inception = Inception(
+    if args.model in MODELS:
+        vgg = VGG(
+            args.model,
             with_preprocessing=preprocessing,
             input_shape=args.input_shape,
             output_shape=args.output_shape,
         )
-        model = inception.build()
+        model = vgg.build()
     else:
         raise ValueError("Unknown model")
     return model
@@ -35,31 +36,25 @@ def summary_only(args):
     if input_shape is not None:
         if input_shape[-1] == 1:
             raise ValueError("Gray scale images are not supported.")
-        model = load_model(args, preprocessing)
+        VGG = load_model(args, preprocessing)
     elif args.dataset is not None:
         dataset = DataSet(args.dataset)
         data = dataset.load()
-        model = load_model(args, preprocessing)
-    if args.expand_summary:
-        model.summary(expand_nested=True)
-    else:
-        model.summary()
+        VGG = load_model(args, preprocessing)
+
+    VGG.summary(expand_nested=True)
     if args.fig_dir is not None:
         img_dir = args.fig_dir
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
-        model_name = args.model
+        model_name = f"VGG_{args.model}"
         image_file_path = os.path.join(img_dir, model_name + ".png")
-        plot_model(
-            model,
-            image_file_path,
-            expand_nested=args.expand_summary,
-        )
-    return model, data
+        plot_model(VGG, image_file_path)
+    return VGG, data
 
 
 def main(args):
-    model, dataset = summary_only(args)
+    VGG, dataset = summary_only(args)
     if args.summary_only:
         return
     if args.dataset is None:
@@ -73,10 +68,10 @@ def main(args):
     loss = return_loss(args.loss)
     metrics = [return_metric(metric) for metric in args.metrics]
 
-    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    VGG.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     if x_train.shape[-1] == 1:
         raise ValueError("Gray scale images are not supported.")
-    model.fit(
+    VGG.fit(
         x_train,
         y_train,
         epochs=args.epochs,
@@ -90,7 +85,7 @@ def arg_parse():
     args.add_argument(
         "--model",
         type=str,
-        default="inception",
+        default="A",
         help="The model to build",
         choices=MODELS,
     )
@@ -125,7 +120,7 @@ def arg_parse():
     args.add_argument(
         "--summary_only",
         action=argparse.BooleanOptionalAction,
-        default=False,
+        default=True,
     )
     args.add_argument(
         "--batch_size", type=int, default=64, help="The batch size for training"
@@ -156,12 +151,6 @@ def arg_parse():
         type=str,
         default="categorical_crossentropy",
         help="The loss function to use",
-    )
-    args.add_argument(
-        "--expand_summary",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Whether to expand the summary",
     )
     args = args.parse_args()
     return args

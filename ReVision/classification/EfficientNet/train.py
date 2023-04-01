@@ -7,7 +7,7 @@ from ReVision.utilities.utils import (
     return_metric,
     plot_model,
 )
-from ReVision.EfficientNet.model import EfficientNet, PHI_TO_RES
+from ReVision.classification.EfficientNet.model import EfficientNet, PHI_TO_RES
 
 
 def load_model(args, preprocessing):

@@ -1,6 +1,6 @@
 import argparse
 import os
-from ReVision.style_transfer import StyleTransfer
+from ReVision.generative.style_transfer import StyleTransfer
 
 
 def main(args):
