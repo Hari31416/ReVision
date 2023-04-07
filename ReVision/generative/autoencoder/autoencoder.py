@@ -119,7 +119,7 @@ class AutoEncoder:
                 x
             )
         outputs = layers.Dense(
-            self.input_shape, activation=activation, name=f"{name}_output"
+            self.input_shape, activation="sigmoid", name=f"{name}_output"
         )(x)
         decoder = Model(inputs, outputs, name=name)
         return decoder, outputs
@@ -340,7 +340,7 @@ class AutoEncoder:
         x = layers.Conv2D(
             output_channels,
             1,
-            activation="relu",
+            activation="sigmoid",
             padding="same",
             name=f"output",
         )(x)
